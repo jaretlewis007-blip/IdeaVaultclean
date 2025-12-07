@@ -1,16 +1,16 @@
 // app/vendorhub/page.tsx
 "use client";
 
+import { useEffect, useState } from "react";
 import { auth, db } from "../../firebase/config";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 
 export default function VendorHubPage() {
   const router = useRouter();
   const user = auth.currentUser;
 
-  const [vendorName, setVendorName] = useState<string>("");
+  const [vendorName, setVendorName] = useState("");
 
   useEffect(() => {
     const loadVendor = async () => {
@@ -24,7 +24,7 @@ export default function VendorHubPage() {
           setVendorName(snap.data().name || "");
         }
       } catch (err) {
-        console.error("Error loading vendor profile:", err);
+        console.error("Vendor profile load error:", err);
       }
     };
 
@@ -37,54 +37,78 @@ export default function VendorHubPage() {
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-10">
       <h1 className="text-3xl font-bold">Vendor Hub</h1>
       <p className="text-gray-300">Welcome, {vendorName || "Vendor"}!</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* View Creator Requests */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* View Vendor Jobs */}
         <div
-          onClick={() => router.push("/vendorhub/requests")}
-          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
+          onClick={() => router.push("/jobs/find")}
+          className="bg-neutral-900 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-800 transition"
         >
-          <h2 className="text-xl font-bold mb-2">View Requests</h2>
-          <p className="text-gray-400">
-            Browse services requested by creators and business owners.
+          <h2 className="text-xl font-semibold">Available Jobs</h2>
+          <p className="text-gray-400 mt-1">
+            Find business owners needing design work, app building, or services.
           </p>
         </div>
 
-        {/* Manage Quotes */}
+        {/* Manage Assigned Jobs */}
         <div
-          onClick={() => router.push("/vendorhub/quotes")}
-          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
+          onClick={() => router.push("/jobs/manage")}
+          className="bg-neutral-900 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-800 transition"
         >
-          <h2 className="text-xl font-bold mb-2">Manage Quotes</h2>
-          <p className="text-gray-400">
-            Create and manage quotes for potential customers.
+          <h2 className="text-xl font-semibold">My Jobs</h2>
+          <p className="text-gray-400 mt-1">
+            View and manage work you've been hired to complete.
           </p>
         </div>
 
-        {/* Profile */}
+        {/* Upload Work */}
         <div
-          onClick={() => router.push(`/profile/${user.uid}`)}
-          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
+          onClick={() => router.push("/vendorhub/upload-work")}
+          className="bg-neutral-900 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-800 transition"
         >
-          <h2 className="text-xl font-bold mb-2">My Profile</h2>
-          <p className="text-gray-400">
-            View or edit your vendor information.
+          <h2 className="text-xl font-semibold">Upload Completed Work</h2>
+          <p className="text-gray-400 mt-1">
+            Deliver finished logos, designs, apps, or documents to clients.
+          </p>
+        </div>
+
+        {/* Manage Portfolio */}
+        <div
+          onClick={() => router.push("/vendorhub/portfolio")}
+          className="bg-neutral-900 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-800 transition"
+        >
+          <h2 className="text-xl font-semibold">My Portfolio</h2>
+          <p className="text-gray-400 mt-1">
+            Show off your past work to attract more clients.
           </p>
         </div>
 
         {/* Wallet */}
         <div
           onClick={() => router.push("/wallet")}
-          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
+          className="bg-neutral-900 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-800 transition"
         >
-          <h2 className="text-xl font-bold mb-2">Wallet</h2>
-          <p className="text-gray-400">
-            Track payments, purchases, and transactions.
+          <h2 className="text-xl font-semibold">Wallet</h2>
+          <p className="text-gray-400 mt-1">
+            Track payments earned from client jobs.
           </p>
         </div>
+
+        {/* Profile */}
+        <div
+          onClick={() => router.push(`/profile/${user.uid}`)}
+          className="bg-neutral-900 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-800 transition"
+        >
+          <h2 className="text-xl font-semibold">My Profile</h2>
+          <p className="text-gray-400 mt-1">
+            Update your vendor skills, pricing, and bio.
+          </p>
+        </div>
+
       </div>
     </div>
   );
