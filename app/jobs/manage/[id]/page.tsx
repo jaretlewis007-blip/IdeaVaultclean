@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { db } from "@/firebase/config";
+import { db } from "../../../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 
 export default function ManageJobPage() {
@@ -34,3 +34,4 @@ export default function ManageJobPage() {
     </div>
   );
 }
+
