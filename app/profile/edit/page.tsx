@@ -1,71 +1,101 @@
+// app/profile/edit/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { auth, db } from "../../../firebase/config";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-export default function EditProfile() {
-  const [userData, setUserData] = useState<any>(null);
+export default function EditProfilePage() {
+  const router = useRouter();
+  const user = auth.currentUser;
+
   const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Load current user profile
   useEffect(() => {
-    async function loadProfile() {
-      const user = auth.currentUser;
+    const loadProfile = async () => {
       if (!user) return;
 
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
+      try {
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
 
-      if (snap.exists()) {
-        const data = snap.data();
-        setUserData(data);
-        setName(data.name || "");
+        if (snap.exists()) {
+          const data = snap.data();
+          setName(data.name || "");
+          setBio(data.bio || "");
+        }
+      } catch (err) {
+        console.error("Error loading profile:", err);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
     loadProfile();
-  }, []);
+  }, [user]);
 
-  async function saveProfile() {
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+
     try {
-      setSaving(true);
-      const user = auth.currentUser;
-      if (!user) return;
-
-      await updateDoc(doc(db, "users", user.uid), {
+      const ref = doc(db, "users", user.uid);
+      await updateDoc(ref, {
         name,
+        bio,
       });
 
-      alert("Profile updated!");
+      router.push(`/profile/${user.uid}`);
     } catch (err) {
-      console.error("Update error:", err);
-      alert("Failed to update profile.");
+      console.error("Error saving profile:", err);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    setSaving(false);
+  if (loading) {
+    return <p className="p-6">Loading profile...</p>;
   }
 
-  if (!userData) return <p className="p-10">Loading...</p>;
-
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Edit Profile</h1>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Edit Profile</h1>
 
-      <div className="space-y-4">
-        <input
-          className="w-full p-2 rounded bg-neutral-800 text-white"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-        />
+      <div className="flex flex-col gap-4 w-full max-w-md">
+        {/* Name */}
+        <label className="flex flex-col">
+          <span className="text-sm text-gray-300 mb-1">Name</span>
+          <input
+            className="p-2 rounded bg-gray-800 text-white"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+          />
+        </label>
 
+        {/* Bio */}
+        <label className="flex flex-col">
+          <span className="text-sm text-gray-300 mb-1">Bio</span>
+          <textarea
+            className="p-2 rounded bg-gray-800 text-white h-28"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Tell people about yourself..."
+          />
+        </label>
+
+        {/* Save Button */}
         <button
-          onClick={saveProfile}
+          onClick={handleSave}
           disabled={saving}
-          className="w-full bg-blue-600 py-2 rounded font-bold"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? "Saving..." : "Save Profile"}
         </button>
       </div>
     </div>
