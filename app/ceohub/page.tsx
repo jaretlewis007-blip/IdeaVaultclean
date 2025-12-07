@@ -1,212 +1,106 @@
+// app/ceohub/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../firebase/config";
-import {
-  collection,
-  getDocs,
-  orderBy,
-  query,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
-export default function CEOHub() {
-  const user = auth.currentUser;
-  const router = useRouter();
+interface UserRecord {
+  id: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  createdAt?: any;
+}
 
-  const [users, setUsers] = useState<any[]>([]);
-  const [ideas, setIdeas] = useState<any[]>([]);
-  const [ndas, setNDAs] = useState<any[]>([]);
-  const [posts, setPosts] = useState<any[]>([]);
+export default function CEOHubPage() {
+  const router = useRouter();
+  const user = auth.currentUser;
+
+  const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --------------------------------
-  // 🔐 CEO ACCESS PROTECTION
-  // --------------------------------
   useEffect(() => {
-    const checkAccess = async () => {
-      if (!user) return router.push("/login");
+    const loadUsers = async () => {
+      if (!user) return;
 
-      const snap = await getDocs(collection(db, "users"));
+      try {
+        const ref = collection(db, "users");
+        const snap = await getDocs(ref);
 
-      const current = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .find((u) => u.uid === user.uid);
+        const list = snap.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as UserRecord),
+        }));
 
-      if (!current || current.role !== "ceo") {
-        alert("Access Denied. CEO Only.");
-        return router.push("/dashboard");
+        setUsers(list);
+      } catch (err) {
+        console.error("Error loading users:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkAccess();
-  }, [user, router]);
+    loadUsers();
+  }, [user]);
 
-  // --------------------------------
-  // 📊 SAFE TIMESTAMP FORMATTER
-  // --------------------------------
-  const formatDate = (d: any) => {
-    if (!d) return "";
-    if (d.toDate) return d.toDate().toLocaleString();
-    return d.toString();
-  };
-
-  // --------------------------------
-  // 📊 LOAD ALL DATA
-  // --------------------------------
-  useEffect(() => {
-    const loadData = async () => {
-      const userSnap = await getDocs(collection(db, "users"));
-      const ideaSnap = await getDocs(collection(db, "ideas"));
-      const ndaSnap = await getDocs(collection(db, "nda"));
-      const postSnap = await getDocs(
-        query(collection(db, "posts"), orderBy("createdAt", "desc"))
-      );
-
-      setUsers(userSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setIdeas(ideaSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setNDAs(ndaSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setPosts(postSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-
-      setLoading(false);
-    };
-
-    loadData();
-  }, []);
+  if (!user) {
+    router.push("/signin");
+    return null;
+  }
 
   if (loading) {
-    return (
-      <div className="p-6 text-white text-center text-xl">
-        Loading CEO Dashboard…
-      </div>
-    );
+    return <p className="p-6">Loading CEO dashboard...</p>;
   }
 
   return (
-    <div className="p-6 text-white max-w-6xl mx-auto">
+    <div className="p-6 space-y-8">
+      <h1 className="text-3xl font-bold">CEO Hub</h1>
+      <p className="text-gray-300">Admin dashboard for IdeaVault.</p>
 
-      {/* TITLE */}
-      <h1 className="text-4xl font-bold text-yellow-400 mb-6">
-        CEO Control Center
-      </h1>
-
-      <p className="text-gray-400 text-lg mb-10">
-        Platform analytics, user growth, ideas, posts, and NDA activity.
-      </p>
-
-      {/* ANALYTICS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard title="Total Users" value={users.length} />
-        <StatCard title="Total Ideas" value={ideas.length} />
-        <StatCard title="Total NDAs" value={ndas.length} />
-        <StatCard title="Total Posts" value={posts.length} />
+      {/* Users Table */}
+      <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-700 overflow-x-auto">
+        <table className="w-full text-left text-gray-300 text-sm">
+          <thead>
+            <tr className="border-b border-neutral-700">
+              <th className="p-2">Name</th>
+              <th className="p-2">Email</th>
+              <th className="p-2">Role</th>
+              <th className="p-2">Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-b border-neutral-800">
+                <td className="p-2">{u.name || "N/A"}</td>
+                <td className="p-2">{u.email}</td>
+                <td className="p-2">{u.role || "user"}</td>
+                <td className="p-2">
+                  {u.createdAt?.toDate?.().toLocaleString?.() || "N/A"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* USERS TABLE */}
-      <SectionTitle title="Users Overview" />
-      <Table
-        headers={["Name", "Email", "Role", "Created"]}
-        rows={users.map((u) => [
-          u.fullName,
-          u.email,
-          u.role,
-          formatDate(u.createdAt),
-        ])}
-      />
+      {/* Buttons */}
+      <div className="flex gap-4">
+        <button
+          onClick={() => router.push("/ideas")}
+          className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded font-semibold"
+        >
+          View All Ideas
+        </button>
 
-      {/* IDEAS TABLE */}
-      <SectionTitle title="Ideas Overview" />
-      <Table
-        headers={["Title", "Creator Email", "NDA Count", "Created"]}
-        rows={ideas.map((i) => [
-          i.title,
-          i.creatorEmail,
-          i.ndaCount ?? 0,
-          formatDate(i.createdAt),
-        ])}
-      />
-
-      {/* NDA TABLE */}
-      <SectionTitle title="NDA Activity" />
-      <Table
-        headers={["Idea", "Viewer", "Creator", "Created"]}
-        rows={ndas.map((n) => [
-          n.ideaTitle,
-          n.viewerName,
-          n.creatorEmail,
-          formatDate(n.createdAt),
-        ])}
-      />
-
-      {/* POSTS TABLE */}
-      <SectionTitle title="Recent Posts" />
-      <Table
-        headers={["Author", "Text", "Likes", "Comments", "Created"]}
-        rows={posts.map((p) => [
-          p.authorName,
-          p.text.substring(0, 50) + "...",
-          p.likeCount ?? 0,
-          p.commentCount ?? 0,
-          formatDate(p.createdAt),
-        ])}
-      />
-    </div>
-  );
-}
-
-//////////////////////////////////////////
-// 🔥 COMPONENT: STAT CARD
-//////////////////////////////////////////
-function StatCard({ title, value }: any) {
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl text-center">
-      <p className="text-gray-400 text-sm">{title}</p>
-      <p className="text-3xl font-bold text-yellow-400 mt-2">{value}</p>
-    </div>
-  );
-}
-
-//////////////////////////////////////////
-// 🔥 COMPONENT: SECTION TITLE
-//////////////////////////////////////////
-function SectionTitle({ title }: any) {
-  return (
-    <h2 className="text-2xl font-bold text-yellow-400 mt-12 mb-4">{title}</h2>
-  );
-}
-
-//////////////////////////////////////////
-// 🔥 COMPONENT: TABLE
-//////////////////////////////////////////
-function Table({ headers, rows }: any) {
-  return (
-    <div className="overflow-x-auto mb-10">
-      <table className="min-w-full bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <thead className="bg-zinc-800 text-gray-400 text-left text-sm">
-          <tr>
-            {headers.map((h: string, index: number) => (
-              <th key={index} className="px-4 py-3 border-b border-zinc-700">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody className="text-gray-200 text-sm">
-          {rows.map((row: any[], rowIndex: number) => (
-            <tr
-              key={rowIndex}
-              className="hover:bg-zinc-800 transition border-b border-zinc-800"
-            >
-              {row.map((cell: any, cellIndex: number) => (
-                <td key={cellIndex} className="px-4 py-3">
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <button
+          onClick={() => router.push("/wallet")}
+          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold"
+        >
+          Financial Overview
+        </button>
+      </div>
     </div>
   );
 }
