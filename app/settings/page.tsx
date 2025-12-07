@@ -1,21 +1,22 @@
-// app/settings/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../firebase/config";
-import { useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
   const router = useRouter();
   const user = auth.currentUser;
 
   const [name, setName] = useState("");
-  const [role, setRole] = useState("");
+  const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Load Settings
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       if (!user) return;
 
       try {
@@ -25,14 +26,16 @@ export default function SettingsPage() {
         if (snap.exists()) {
           const data = snap.data();
           setName(data.name || "");
-          setRole(data.role || "");
+          setBio(data.bio || "");
         }
       } catch (err) {
-        console.error("Error loading settings:", err);
+        console.error("Settings load error:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadData();
+    load();
   }, [user]);
 
   if (!user) {
@@ -40,73 +43,72 @@ export default function SettingsPage() {
     return null;
   }
 
-  const saveChanges = async () => {
+  if (loading) return <p className="p-6">Loading settings...</p>;
+
+  // SAVE SETTINGS
+  const save = async () => {
     if (!user) return;
     setSaving(true);
 
-    try:
-    {
+    try {
       const ref = doc(db, "users", user.uid);
+
       await updateDoc(ref, {
         name,
-        role,
+        bio,
       });
+
+      router.push("/dashboard");
     } catch (err) {
-      console.error("Error saving settings:", err);
+      console.error("Settings update error:", err);
+      alert("Failed to save settings.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-8 max-w-xl mx-auto">
       <h1 className="text-3xl font-bold">Settings</h1>
-      <p className="text-gray-400">Manage your profile & account settings.</p>
 
-      <div className="bg-neutral-900 p-6 rounded-lg border border-neutral-700 space-y-4">
-        {/* Name */}
-        <div className="flex flex-col">
-          <label className="text-gray-300 mb-1">Display Name</label>
+      <div className="bg-neutral-900 p-6 rounded-lg border border-neutral-700 space-y-6">
+
+        {/* NAME */}
+        <div>
+          <label className="text-gray-300 mb-1 block">Name</label>
           <input
-            className="bg-neutral-800 border border-neutral-700 p-2 rounded text-white"
+            className="bg-neutral-800 border border-neutral-700 p-2 rounded w-full text-white"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
           />
         </div>
 
-        {/* Role */}
-        <div className="flex flex-col">
-          <label className="text-gray-300 mb-1">Role</label>
-          <select
-            className="bg-neutral-800 border border-neutral-700 p-2 rounded text-white"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="creator">Creator</option>
-            <option value="vendor">Vendor</option>
-            <option value="lawyer">Lawyer</option>
-            <option value="investor">Investor</option>
-            <option value="ceo">CEO</option>
-          </select>
+        {/* BIO */}
+        <div>
+          <label className="text-gray-300 mb-1 block">Bio</label>
+          <textarea
+            className="bg-neutral-800 border border-neutral-700 p-2 rounded w-full text-white h-32"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+          />
         </div>
 
-        {/* Save Button */}
+        {/* SAVE */}
         <button
-          onClick={saveChanges}
+          onClick={save}
           disabled={saving}
-          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-2 rounded mt-3 disabled:opacity-50"
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black py-2 rounded font-semibold disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
 
-      {/* Back Button */}
+      {/* BACK */}
       <button
         onClick={() => router.push("/dashboard")}
-        className="bg-neutral-800 border border-neutral-700 px-4 py-2 rounded hover:bg-neutral-700"
+        className="bg-neutral-800 border border-neutral-600 px-4 py-2 rounded hover:bg-neutral-700"
       >
-        Back to Dashboard
+        Cancel
       </button>
     </div>
   );
