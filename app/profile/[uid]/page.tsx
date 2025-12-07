@@ -1,46 +1,73 @@
+// app/profile/[uid]/page.tsx
 "use client";
 
-import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { db } from "../../../firebase/config";
+import { useParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../../firebase/config";
 
-export default function UserProfile() {
+interface UserProfile {
+  id: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  bio?: string;
+  createdAt?: any;
+}
+
+export default function UserProfilePage() {
   const { uid } = useParams();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadUser() {
+    const loadProfile = async () => {
+      if (!uid) return;
+
       try {
         const ref = doc(db, "users", uid as string);
         const snap = await getDoc(ref);
 
         if (snap.exists()) {
-          setUser(snap.data());
+          setUser({
+            id: snap.id,
+            ...snap.data(),
+          } as UserProfile);
         }
       } catch (err) {
-        console.error("Error loading user:", err);
+        console.error("Failed to load profile:", err);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setLoading(false);
-    }
-
-    loadUser();
+    loadProfile();
   }, [uid]);
 
-  if (loading) return <p className="p-10">Loading...</p>;
-  if (!user) return <p className="p-10">User not found.</p>;
+  if (loading) {
+    return <p className="p-6">Loading profile…</p>;
+  }
+
+  if (!user) {
+    return <p className="p-6">Profile not found.</p>;
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-4">{user.name}</h1>
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">{user.name || "Unnamed User"}</h1>
 
-      <div className="bg-neutral-800 p-4 rounded-lg">
-        <p>Email: {user.email}</p>
-        <p>Role: {user.role}</p>
-        <p>Joined: {user.createdAt?.toDate().toLocaleString()}</p>
-      </div>
+      <p className="text-gray-300">Email: {user.email}</p>
+      <p className="text-gray-300">Role: {user.role || "N/A"}</p>
+
+      {user.bio && (
+        <p className="text-gray-400 mt-4">Bio: {user.bio}</p>
+      )}
+
+      {user.createdAt && (
+        <p className="text-gray-500 text-sm">
+          Joined: {user.createdAt.toDate?.().toLocaleString?.() || "N/A"}
+        </p>
+      )}
     </div>
   );
 }
