@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/firebase/config";
+import { auth, db } from "../../firebase/config";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
 
@@ -52,3 +52,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+
