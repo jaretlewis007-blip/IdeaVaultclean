@@ -1,17 +1,26 @@
+// app/ideas/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { db } from "../../../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../../firebase/config";
+
+interface Idea {
+  id: string;
+  title: string;
+  description: string;
+  createdAt?: any;
+  ownerId?: string;
+}
 
 export default function IdeaDetails() {
   const { id } = useParams();
-  const [idea, setIdea] = useState<any>(null);
+  const [idea, setIdea] = useState<Idea | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchIdea() {
+    const fetchIdea = async () => {
       if (!id) return;
 
       try {
@@ -19,29 +28,38 @@ export default function IdeaDetails() {
         const snap = await getDoc(ref);
 
         if (snap.exists()) {
-          setIdea(snap.data());
+          setIdea({
+            id: snap.id,
+            ...snap.data(),
+          } as Idea);
         }
       } catch (err) {
         console.error("Error loading idea:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
-    }
+    };
 
     fetchIdea();
   }, [id]);
 
-  if (loading) return <p className="text-center p-10">Loading...</p>;
-  if (!idea) return <p className="text-center p-10">Idea not found.</p>;
+  if (loading) {
+    return <p className="p-6">Loading idea...</p>;
+  }
+
+  if (!idea) {
+    return <p className="p-6">Idea not found.</p>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-4">{idea.title}</h1>
-      <p className="text-gray-300 mb-6">{idea.description}</p>
-
-      <div className="p-4 bg-neutral-800 rounded-lg">
-        <p className="text-sm text-gray-400">Posted by: {idea.ownerEmail}</p>
-      </div>
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">{idea.title}</h1>
+      <p className="text-gray-300">{idea.description}</p>
+      {idea.createdAt && (
+        <p className="text-gray-400 text-sm">
+          Created: {idea.createdAt.toDate?.().toLocaleString?.() || "N/A"}
+        </p>
+      )}
     </div>
   );
 }
