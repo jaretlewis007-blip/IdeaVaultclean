@@ -1,31 +1,49 @@
-const requestNDA = async () => {
-  if (!user) return alert("Login required.");
+"use client";
 
-  // Create NDA request
-  await addDoc(collection(db, "nda"), {
-    creatorId: idea.creatorId,
-    creatorEmail: idea.creatorEmail,
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { db } from "../../../firebase/config";
+import { doc, getDoc } from "firebase/firestore";
 
-    viewerId: user.uid,
-    viewerEmail: user.email,
-    viewerName: user.email,
+export default function IdeaDetailsPage() {
+  const { id } = useParams();
+  const [idea, setIdea] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-    ideaId: idea.id,
-    ideaTitle: idea.title,
+  useEffect(() => {
+    const fetchIdea = async () => {
+      if (!id) return;
 
-    pdfUrl: null,
-    status: "pending",
+      try {
+        const ref = doc(db, "ideas", id as string);
+        const snap = await getDoc(ref);
 
-    reviewedByLawyerId: null,
-    lawyerNotes: null,
+        if (snap.exists()) {
+          setIdea(snap.data());
+        }
+      } catch (error) {
+        console.error("Error loading idea:", error);
+      }
 
-    createdAt: serverTimestamp(),
-  });
+      setLoading(false);
+    };
 
-  // 🔥 TRENDING SCORE UPDATE
-  await updateDoc(doc(db, "ideas", idea.id), {
-    ndaCount: (idea.ndaCount || 0) + 1,
-  });
+    fetchIdea();
+  }, [id]);
 
-  alert("NDA request sent.");
-};
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (!idea) return <div className="p-6">Idea not found</div>;
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold mb-4">{idea.title}</h1>
+
+      <p className="text-gray-700 mb-6">{idea.description}</p>
+
+      <div className="bg-gray-100 p-4 rounded-lg">
+        <p><strong>Category:</strong> {idea.category}</p>
+        <p><strong>Created By:</strong> {idea.userEmail}</p>
+      </div>
+    </div>
+  );
+}
