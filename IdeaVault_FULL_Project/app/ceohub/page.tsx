@@ -4,10 +4,24 @@ import { useEffect, useState } from "react";
 import { auth, db } from "../../firebase/config";
 import { collection, getDocs } from "firebase/firestore";
 
+// ---------- TYPES ----------
+interface Post {
+  id: string;
+  type?: string; // <-- OPTIONAL so TS stops complaining
+  title?: string;
+  description?: string;
+  [key: string]: any;
+}
+
 interface UserData {
   id: string;
-  uid?: string;      // <-- FIX: Make uid optional so TypeScript allows it
+  uid?: string;
   role?: string;
+  [key: string]: any;
+}
+
+interface NDA {
+  id: string;
   [key: string]: any;
 }
 
@@ -17,12 +31,12 @@ export default function CEOHubPage() {
   const [loading, setLoading] = useState(true);
   const [isCEO, setIsCEO] = useState(false);
 
-  const [allPosts, setAllPosts] = useState<any[]>([]);
-  const [investorOffers, setInvestorOffers] = useState<any[]>([]);
-  const [vendorPosts, setVendorPosts] = useState<any[]>([]);
-  const [creatorPosts, setCreatorPosts] = useState<any[]>([]);
-  const [lawyerPosts, setLawyerPosts] = useState<any[]>([]);
-  const [ndas, setNdas] = useState<any[]>([]);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [investorOffers, setInvestorOffers] = useState<Post[]>([]);
+  const [vendorPosts, setVendorPosts] = useState<Post[]>([]);
+  const [creatorPosts, setCreatorPosts] = useState<Post[]>([]);
+  const [lawyerPosts, setLawyerPosts] = useState<Post[]>([]);
+  const [ndas, setNdas] = useState<NDA[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -41,7 +55,6 @@ export default function CEOHubPage() {
           ...d.data(),
         }));
 
-        // Find the current user safely
         const current = users.find((u) => u.uid === user.uid);
 
         if (!current || current.role !== "ceo") {
@@ -56,12 +69,14 @@ export default function CEOHubPage() {
         // LOAD POSTS
         // ====================
         const postsSnap = await getDocs(collection(db, "posts"));
-        const posts = postsSnap.docs.map((d) => ({
+        const posts: Post[] = postsSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
 
         setAllPosts(posts);
+
+        // SAFE FILTER — no TS errors
         setInvestorOffers(posts.filter((p) => p.type === "investor"));
         setVendorPosts(posts.filter((p) => p.type === "vendor"));
         setCreatorPosts(posts.filter((p) => p.type === "creator"));
@@ -71,7 +86,7 @@ export default function CEOHubPage() {
         // LOAD NDAs
         // ====================
         const ndaSnap = await getDocs(collection(db, "nda"));
-        const ndaList = ndaSnap.docs.map((d) => ({
+        const ndaList: NDA[] = ndaSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
@@ -90,7 +105,9 @@ export default function CEOHubPage() {
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (!isCEO)
-    return <div className="p-6 text-red-600 text-xl font-bold">Access Denied — CEO Only.</div>;
+    return <div className="p-6 text-red-600 text-xl font-bold">
+      Access Denied — CEO Only.
+    </div>;
 
   return (
     <div className="p-6 space-y-8">
@@ -101,6 +118,8 @@ export default function CEOHubPage() {
         <StatBox title="Total Posts" value={allPosts.length} />
         <StatBox title="Investor Offers" value={investorOffers.length} />
         <StatBox title="Vendor Posts" value={vendorPosts.length} />
+        <StatBox title="Creator Posts" value={creatorPosts.length} />
+        <StatBox title="Lawyer Posts" value={lawyerPosts.length} />
         <StatBox title="NDAs Generated" value={ndas.length} />
       </div>
 
@@ -113,9 +132,9 @@ export default function CEOHubPage() {
   );
 }
 
-// ==========================
+// ---------------------------
 // COMPONENTS
-// ==========================
+// ---------------------------
 
 function StatBox({ title, value }: any) {
   return (
@@ -128,8 +147,8 @@ function StatBox({ title, value }: any) {
 
 function Section({ title, items, idOnly = false }: any) {
   return (
-    <section>
-      <h2 className="text-2xl font-bold mb-2">{title}</h2>
+    <section className="space-y-2">
+      <h2 className="text-2xl font-bold">{title}</h2>
 
       {items.length === 0 ? (
         <p className="text-gray-500">No {title.toLowerCase()} yet.</p>
