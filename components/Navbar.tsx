@@ -1,26 +1,25 @@
 "use client";
 
-import Link from "next/link";
+import { auth } from "../firebase/config";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
-  return (
-    <div className="flex items-center justify-between w-full">
-      <h1 className="text-2xl font-bold text-yellow-400">IdeaVault</h1>
+  const router = useRouter();
 
-      <div className="flex items-center space-x-4">
-        <Link href="/profile" className="hover:text-yellow-400 text-white">
-          Profile
-        </Link>
-        <button
-          onClick={() => {
-            localStorage.clear();
-            window.location.href = "/signin";
-          }}
-          className="text-red-400 hover:text-red-500"
-        >
-          Logout
-        </button>
-      </div>
-    </div>
+  return (
+    <header className="w-full p-4 bg-gray-800 border-b border-gray-700 flex justify-between">
+      <h2 className="text-yellow-400 font-bold text-xl">Welcome to IdeaVault</h2>
+
+      <button
+        onClick={() => {
+          signOut(auth);
+          router.push("/signin");
+        }}
+        className="bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+      >
+        Logout
+      </button>
+    </header>
   );
 }
