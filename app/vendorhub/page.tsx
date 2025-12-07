@@ -1,117 +1,90 @@
+// app/vendorhub/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { auth, db, storage } from "../../firebase/config";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, db } from "../../firebase/config";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
 
-export default function VendorHub() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("");
-  const [image, setImage] = useState(null);
-  const [loading, setLoading] = useState(false);
-
+export default function VendorHubPage() {
+  const router = useRouter();
   const user = auth.currentUser;
 
-  const uploadService = async () => {
-    if (!title || !description || !price || !category) {
-      alert("Fill all fields.");
-      return;
-    }
+  const [vendorName, setVendorName] = useState<string>("");
 
-    setLoading(true);
+  useEffect(() => {
+    const loadVendor = async () => {
+      if (!user) return;
 
-    let imageUrl = null;
+      try {
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
 
-    if (image) {
-      const filePath = `user_uploads/${user.uid}/marketplace/${Date.now()}_${image.name}`;
-      const storageRef = ref(storage, filePath);
-      await uploadBytes(storageRef, image);
-      imageUrl = await getDownloadURL(storageRef);
-    }
+        if (snap.exists()) {
+          setVendorName(snap.data().name || "");
+        }
+      } catch (err) {
+        console.error("Error loading vendor profile:", err);
+      }
+    };
 
-    await addDoc(collection(db, "marketplace"), {
-      userId: user.uid,
-      title,
-      description,
-      price,
-      category,
-      imageUrl,
-      createdAt: serverTimestamp(),
-    });
+    loadVendor();
+  }, [user]);
 
-    setTitle("");
-    setDescription("");
-    setPrice("");
-    setCategory("");
-    setImage(null);
-    setLoading(false);
-
-    alert("Service uploaded!");
-  };
+  if (!user) {
+    router.push("/signin");
+    return null;
+  }
 
   return (
-    <div className="min-h-screen text-white bg-black p-6">
-      <h1 className="text-3xl font-bold text-gold mb-6">Vendor Hub</h1>
+    <div className="p-6 space-y-8">
+      <h1 className="text-3xl font-bold">Vendor Hub</h1>
+      <p className="text-gray-300">Welcome, {vendorName || "Vendor"}!</p>
 
-      <div className="bg-white/10 border border-gold/30 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gold mb-4">Upload Your Service</h2>
-
-        <input
-          className="w-full p-3 mb-3 bg-black/30 border border-gold/30 rounded"
-          placeholder="Service Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-
-        <textarea
-          className="w-full p-3 mb-3 bg-black/30 border border-gold/30 rounded h-32"
-          placeholder="Describe your service..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-
-        <input
-          className="w-full p-3 mb-3 bg-black/30 border border-gold/30 rounded"
-          placeholder="Price ($)"
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
-
-        <select
-          className="w-full p-3 mb-3 bg-black/30 border border-gold/30 rounded"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* View Creator Requests */}
+        <div
+          onClick={() => router.push("/vendorhub/requests")}
+          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
         >
-          <option value="">Select Category</option>
-          <option value="Design">Design</option>
-          <option value="Development">Development</option>
-          <option value="Legal">Legal</option>
-          <option value="Manufacturing">Manufacturing</option>
-          <option value="Marketing">Marketing</option>
-          <option value="Branding">Branding</option>
-          <option value="Other">Other</option>
-        </select>
+          <h2 className="text-xl font-bold mb-2">View Requests</h2>
+          <p className="text-gray-400">
+            Browse services requested by creators and business owners.
+          </p>
+        </div>
 
-        <input
-          type="file"
-          className="block mb-3"
-          onChange={(e) => setImage(e.target.files[0])}
-        />
-
-        <button
-          onClick={uploadService}
-          className="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-bold"
+        {/* Manage Quotes */}
+        <div
+          onClick={() => router.push("/vendorhub/quotes")}
+          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
         >
-          {loading ? "Uploading..." : "Upload Service"}
-        </button>
+          <h2 className="text-xl font-bold mb-2">Manage Quotes</h2>
+          <p className="text-gray-400">
+            Create and manage quotes for potential customers.
+          </p>
+        </div>
+
+        {/* Profile */}
+        <div
+          onClick={() => router.push(`/profile/${user.uid}`)}
+          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
+        >
+          <h2 className="text-xl font-bold mb-2">My Profile</h2>
+          <p className="text-gray-400">
+            View or edit your vendor information.
+          </p>
+        </div>
+
+        {/* Wallet */}
+        <div
+          onClick={() => router.push("/wallet")}
+          className="bg-neutral-800 border border-neutral-700 p-5 rounded-lg cursor-pointer hover:bg-neutral-700 transition"
+        >
+          <h2 className="text-xl font-bold mb-2">Wallet</h2>
+          <p className="text-gray-400">
+            Track payments, purchases, and transactions.
+          </p>
+        </div>
       </div>
     </div>
   );
