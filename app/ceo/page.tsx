@@ -2,250 +2,77 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../firebase/config";
-import {
-  collection,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
-/* ----------------------------------------------------
-   UTIL: Format Time
----------------------------------------------------- */
-const timeAgo = (ts: any) => {
-  if (!ts?.seconds) return "";
-  const diff = (Date.now() - ts.seconds * 1000) / 1000;
+interface PostRecord {
+  id: string;
+  title?: string;
+  description?: string;
+  type?: string; // FIX ADDED
+  ownerId?: string;
+  createdAt?: any;
+}
 
-  if (diff < 60) return `${Math.floor(diff)}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-};
-
-export default function CEOPage() {
+export default function CEOHub() {
+  const router = useRouter();
   const user = auth.currentUser;
 
-  const [role, setRole] = useState("");
-  const [activeUsers, setActiveUsers] = useState(0);
+  const [allPosts, setAllPosts] = useState<PostRecord[]>([]);
+  const [investorOffers, setInvestorOffers] = useState<PostRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [users, setUsers] = useState<any[]>([]);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [ndas, setNDAs] = useState<any[]>([]);
-  const [marketplace, setMarketplace] = useState<any[]>([]);
-  const [investorOffers, setInvestorOffers] = useState<any[]>([]);
-
-  /* ----------------------------------------------------
-     CHECK CEO ACCESS
-  ---------------------------------------------------- */
-  useEffect(() => {
-    const checkRole = async () => {
-      if (!user) return;
-      const r = await getDoc(doc(db, "users", user.uid));
-      if (r.exists()) setRole(r.data().role);
-    };
-    checkRole();
-  }, [user]);
-
-  if (role !== "ceo") {
-    return (
-      <div className="p-10 text-center text-red-400 text-xl">
-        Access Denied — CEO Only
-      </div>
-    );
+  if (!user) {
+    router.push("/signin");
+    return null;
   }
 
-  /* ----------------------------------------------------
-     LOAD DATA FOR ADMIN PANEL
-  ---------------------------------------------------- */
   useEffect(() => {
-    const loadData = async () => {
-      // USERS
-      const u = await getDocs(collection(db, "users"));
-      setUsers(u.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const loadAll = async () => {
+      try {
+        const snap = await getDocs(collection(db, "projects"));
+        const results = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Partial<PostRecord>),
+        }));
 
-      // POSTS (from ideas)
-      const p = await getDocs(collection(db, "ideas"));
-      const allPosts = p.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setPosts(allPosts);
+        setAllPosts(results);
 
-      // INVESTOR OFFERS
-      setInvestorOffers(allPosts.filter((p) => p.type === "investor"));
-
-      // NDAs
-      const nd = await getDocs(collection(db, "nda"));
-      setNDAs(nd.docs.map((d) => ({ id: d.id, ...d.data() })));
-
-      // MARKETPLACE (auto-create if empty)
-      const mk = await getDocs(collection(db, "marketplace"));
-      setMarketplace(mk.docs.map((d) => ({ id: d.id, ...d.data() })));
-
-      // ACTIVE USERS TODAY (posts + reactions + comments)
-      const last24 = Date.now() - 24 * 60 * 60 * 1000;
-
-      const activeSet = new Set();
-
-      allPosts.forEach((p) => {
-        if (p.createdAt?.seconds * 1000 > last24) activeSet.add(p.userId);
-
-        p.reactions?.forEach((r: any) => {
-          if (r.time > last24) activeSet.add(r.userId);
-        });
-
-        p.comments?.forEach((c: any) => {
-          if (c.time > last24) activeSet.add(c.userId);
-        });
-      });
-
-      setActiveUsers(activeSet.size);
+        // Filter by type (SAFE now)
+        setInvestorOffers(results.filter((p) => p.type === "investor"));
+      } catch (err) {
+        console.error("CEOHub error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    loadData();
+    loadAll();
   }, []);
 
-  /* ----------------------------------------------------
-     CEO TOOLS
-  ---------------------------------------------------- */
-  const promoteToCeo = async (id: string) => {
-    await updateDoc(doc(db, "users", id), { role: "ceo" });
-    alert("User promoted to CEO.");
-    window.location.reload();
-  };
+  if (loading) return <p className="p-6">Loading CEO Hub...</p>;
 
-  const deletePost = async (id: string) => {
-    await deleteDoc(doc(db, "ideas", id));
-    alert("Post deleted.");
-    window.location.reload();
-  };
-
-  const deleteUser = async (id: string) => {
-    await deleteDoc(doc(db, "users", id));
-    alert("User deleted.");
-    window.location.reload();
-  };
-
-  /* ----------------------------------------------------
-     UI COMPONENTS — CLEAN + GOLD MIX
-  ---------------------------------------------------- */
-  const Card = ({ title, value }: any) => (
-    <div className="bg-white/5 border border-gold/30 rounded-xl p-6 shadow-md text-center">
-      <h2 className="text-gold text-lg font-bold">{title}</h2>
-      <p className="text-3xl font-bold mt-2">{value}</p>
-    </div>
-  );
-
-  const Table = ({ columns, data, actions }: any) => (
-    <div className="bg-white/5 border border-gold/20 rounded-xl p-4 overflow-x-auto mt-6">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="text-gold border-b border-gold/20">
-            {columns.map((col: any, i: number) => (
-              <th key={i} className="p-2 font-bold">
-                {col}
-              </th>
-            ))}
-            {actions && <th className="p-2">Actions</th>}
-          </tr>
-        </thead>
-
-        <tbody>
-          {data.map((row: any) => (
-            <tr key={row.id} className="border-b border-white/10">
-              {columns.map((col: any, i: number) => (
-                <td key={i} className="p-2">
-                  {row[col]}
-                </td>
-              ))}
-              {actions && (
-                <td className="p-2 flex gap-2">
-                  {actions(row)}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  /* ----------------------------------------------------
-     RENDER ADMIN PANEL
-  ---------------------------------------------------- */
   return (
-    <div className="p-8 text-white">
-      <h1 className="text-4xl font-bold text-gold mb-6">
-        👑 CEO Admin Panel
-      </h1>
+    <div className="p-6 space-y-8">
+      <h1 className="text-3xl font-bold">CEO Hub</h1>
 
-      {/* ANALYTICS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card title="Active Users Today" value={activeUsers} />
+      <div className="bg-neutral-900 border border-neutral-700 rounded p-6">
+        <h2 className="text-xl font-semibold mb-4">Investor Offers</h2>
+
+        {investorOffers.length === 0 ? (
+          <p className="text-gray-400">No investor offers found.</p>
+        ) : (
+          investorOffers.map((offer) => (
+            <div
+              key={offer.id}
+              className="border border-neutral-700 p-4 rounded mb-3 bg-neutral-800"
+            >
+              <h3 className="font-semibold">{offer.title}</h3>
+              <p className="text-gray-400">{offer.description}</p>
+            </div>
+          ))
+        )}
       </div>
-
-      {/* USERS TABLE */}
-      <h2 className="text-2xl font-bold text-gold mt-12 mb-3">Users</h2>
-      <Table
-        columns={["email", "role"]}
-        data={users}
-        actions={(row: any) => (
-          <>
-            <button
-              onClick={() => promoteToCeo(row.id)}
-              className="px-3 py-1 bg-gold text-black rounded-lg"
-            >
-              Promote
-            </button>
-            <button
-              onClick={() => deleteUser(row.id)}
-              className="px-3 py-1 bg-red-600 text-white rounded-lg"
-            >
-              Delete
-            </button>
-          </>
-        )}
-      />
-
-      {/* POSTS TABLE */}
-      <h2 className="text-2xl font-bold text-gold mt-12 mb-3">Posts</h2>
-      <Table
-        columns={["type", "userId"]}
-        data={posts}
-        actions={(row: any) => (
-          <button
-            onClick={() => deletePost(row.id)}
-            className="px-3 py-1 bg-red-600 text-white rounded-lg"
-          >
-            Delete
-          </button>
-        )}
-      />
-
-      {/* NDAs */}
-      <h2 className="text-2xl font-bold text-gold mt-12 mb-3">NDAs</h2>
-      <Table columns={["owner", "recipient"]} data={ndas} />
-
-      {/* INVESTOR OFFERS */}
-      <h2 className="text-2xl font-bold text-gold mt-12 mb-3">
-        Investor Offers
-      </h2>
-      <Table
-        columns={["userId", "amount", "equity"]}
-        data={investorOffers}
-      />
-
-      {/* MARKETPLACE */}
-      <h2 className="text-2xl font-bold text-gold mt-12 mb-3">
-        Marketplace Work
-      </h2>
-      <Table
-        columns={["vendor", "service", "price"]}
-        data={marketplace}
-      />
-
-      <div className="h-20"></div>
     </div>
   );
 }
