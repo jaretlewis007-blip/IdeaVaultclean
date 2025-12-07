@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { db, auth } from "@/firebase/config";
+import { db, auth } from "../../firebase/config";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export default function NDAPage() {
@@ -42,3 +42,4 @@ export default function NDAPage() {
     </div>
   );
 }
+
