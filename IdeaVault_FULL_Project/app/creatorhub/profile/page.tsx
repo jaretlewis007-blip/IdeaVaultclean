@@ -2,152 +2,115 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../../firebase/config";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-} from "firebase/firestore";
-import Link from "next/link";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
-export default function CreatorProfile() {
+// ------------ TYPES ------------
+interface Idea {
+  id: string;
+  title?: string;
+  description?: string;
+  ndaCount?: number; // <-- FIXED: property optional
+  [key: string]: any;
+}
+
+export default function CreatorProfilePage() {
   const user = auth.currentUser;
-  const [ideas, setIdeas] = useState<any[]>([]);
+
+  const [ideas, setIdeas] = useState<Idea[]>([]);
   const [stats, setStats] = useState({
     totalIdeas: 0,
     totalNDA: 0,
     trendingIdeas: 0,
   });
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    if (!user) return;
+    const loadIdeas = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    const q = query(
-      collection(db, "ideas"),
-      where("creatorId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+      try {
+        const q = query(
+          collection(db, "ideas"),
+          where("userId", "==", user.uid)
+        );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setIdeas(data);
+        const snap = await getDocs(q);
+        const data: Idea[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      // stats
-      const totalIdeas = data.length;
-      const totalNDA = data.reduce((sum, idea) => sum + (idea.ndaCount || 0), 0);
-      const trendingIdeas = data.filter((idea) => (idea.ndaCount || 0) >= 5).length;
+        setIdeas(data);
 
-      setStats({
-        totalIdeas,
-        totalNDA,
-        trendingIdeas,
-      });
-    });
+        const totalIdeas = data.length;
+        const totalNDA = data.reduce(
+          (sum, idea) => sum + (idea.ndaCount ?? 0),
+          0
+        );
+        const trendingIdeas = data.filter(
+          (idea) => (idea.ndaCount ?? 0) >= 5
+        ).length;
 
-    return () => unsub();
+        setStats({
+          totalIdeas,
+          totalNDA,
+          trendingIdeas,
+        });
+      } catch (err) {
+        console.error("Creator Profile Error:", err);
+      }
+
+      setLoading(false);
+    };
+
+    loadIdeas();
   }, [user]);
 
-  if (!user) {
-    return (
-      <div className="p-6 text-white">
-        <p>Please log in to view your creator profile.</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-6">Loading your profile…</div>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto text-white">
-      <h1 className="text-4xl font-bold text-yellow-400 mb-4">
-        Your Creator Profile
-      </h1>
+    <div className="p-6 space-y-8">
+      <h1 className="text-3xl font-bold">Creator Profile</h1>
 
-      <p className="text-gray-400 mb-10 text-lg">
-        Manage your ideas, view performance, and grow your creator brand.
-      </p>
-
-      {/* ------------------------------------------------------- */}
-      {/* CREATOR INFO */}
-      {/* ------------------------------------------------------- */}
-      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl mb-10">
-        <h2 className="text-2xl font-bold text-yellow-400 mb-3">
-          {user.email}
-        </h2>
-
-        <p className="text-gray-400 text-sm mb-3">Creator since 2025</p>
-
-        <div className="flex gap-4 mt-4">
-          <div className="bg-yellow-500 text-black px-3 py-1 rounded-lg text-sm font-semibold">
-            Total Ideas: {stats.totalIdeas}
-          </div>
-          <div className="bg-green-500 text-black px-3 py-1 rounded-lg text-sm font-semibold">
-            NDA Requests: {stats.totalNDA}
-          </div>
-          {stats.trendingIdeas > 0 && (
-            <div className="bg-blue-500 text-black px-3 py-1 rounded-lg text-sm font-semibold">
-              Trending Ideas: {stats.trendingIdeas}
-            </div>
-          )}
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatBox title="Total Ideas" value={stats.totalIdeas} />
+        <StatBox title="Total NDAs" value={stats.totalNDA} />
+        <StatBox title="Trending Ideas (5+ NDAs)" value={stats.trendingIdeas} />
       </div>
 
-      {/* ------------------------------------------------------- */}
-      {/* YOUR IDEAS LIST */}
-      {/* ------------------------------------------------------- */}
-      <h2 className="text-3xl font-bold text-yellow-400 mb-4">
-        Your Uploaded Ideas
-      </h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        {ideas.map((idea) => (
-          <Link key={idea.id} href={`/ideas/${idea.id}`}>
-            <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl hover:border-yellow-500 transition cursor-pointer">
-
-              <h2 className="text-xl font-bold text-yellow-400">
-                {idea.title}
-              </h2>
-
-              <p className="text-gray-400 mt-2 line-clamp-3">
-                {idea.description}
-              </p>
-
-              {/* Badges */}
-              <div className="flex flex-wrap gap-2 mt-3">
-                {idea.roiEstimate && (
-                  <span className="text-xs bg-green-600 px-2 py-1 rounded-full">
-                    ROI: {idea.roiEstimate}
-                  </span>
-                )}
-
-                {idea.equityOffered && (
-                  <span className="text-xs bg-blue-600 px-2 py-1 rounded-full">
-                    Equity: {idea.equityOffered}%
-                  </span>
-                )}
-              </div>
-
-              {/* Stats */}
-              <p className="text-xs text-yellow-500 mt-3">
-                NDA Requests: {idea.ndaCount || 0}
-              </p>
-
-              <p className="text-xs text-gray-400 mt-1">
-                {idea.category} • {idea.fundingStatus}
-              </p>
-
-              <p className="text-xs text-gray-400 mt-1">
-                {idea.locationCity}, {idea.locationState}
-              </p>
-
-            </div>
-          </Link>
-        ))}
-
-        {ideas.length === 0 && (
-          <p className="text-gray-400">You haven't uploaded any ideas yet.</p>
+      {/* Ideas */}
+      <section>
+        <h2 className="text-2xl font-bold mt-4">Your Ideas</h2>
+        {ideas.length === 0 ? (
+          <p className="text-gray-500 mt-2">No ideas found.</p>
+        ) : (
+          <ul className="space-y-3 mt-3">
+            {ideas.map((idea) => (
+              <li key={idea.id} className="bg-gray-100 p-4 rounded-lg">
+                <p className="font-bold">{idea.title}</p>
+                <p>{idea.description}</p>
+                <p className="text-sm mt-2 text-gray-600">
+                  NDAs Signed: {idea.ndaCount ?? 0}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </section>
+    </div>
+  );
+}
+
+function StatBox({ title, value }: any) {
+  return (
+    <div className="bg-gray-100 p-4 rounded-lg text-center">
+      <h3 className="font-bold">{title}</h3>
+      <p className="text-2xl">{value}</p>
     </div>
   );
 }
