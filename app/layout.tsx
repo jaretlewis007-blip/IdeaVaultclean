@@ -4,25 +4,18 @@ import Navbar from "../components/Navbar";
 
 export const metadata = {
   title: "IdeaVault",
-  description: "Protect and grow your ideas",
+  description: "Secure Idea Sharing Platform",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <div className="layout">
-          <div className="sidebar">
-            <Sidebar />
-          </div>
+      <body className="bg-black text-white flex">
+        <Sidebar />
 
-          <div className="main">
-            <div className="navbar">
-              <Navbar />
-            </div>
-
-            {children}
-          </div>
+        <div className="flex-1">
+          <Navbar />
+          <main className="p-6">{children}</main>
         </div>
       </body>
     </html>
