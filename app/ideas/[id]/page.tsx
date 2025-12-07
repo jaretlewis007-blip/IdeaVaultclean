@@ -1,22 +1,46 @@
 "use client";
 
-export default function IdeaDetails({ params }) {
-  const { id } = params;
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { db } from "../../../firebase/config";
+import { doc, getDoc } from "firebase/firestore";
+
+export default function IdeaDetails() {
+  const { id } = useParams();
+  const [idea, setIdea] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchIdea() {
+      if (!id) return;
+
+      try {
+        const ref = doc(db, "ideas", id as string);
+        const snap = await getDoc(ref);
+
+        if (snap.exists()) {
+          setIdea(snap.data());
+        }
+      } catch (err) {
+        console.error("Error loading idea:", err);
+      }
+
+      setLoading(false);
+    }
+
+    fetchIdea();
+  }, [id]);
+
+  if (loading) return <p className="text-center p-10">Loading...</p>;
+  if (!idea) return <p className="text-center p-10">Idea not found.</p>;
 
   return (
-    <div className="p-6 text-white">
-      <h1 className="text-3xl font-bold mb-4">Idea Details</h1>
+    <div className="max-w-3xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-4">{idea.title}</h1>
+      <p className="text-gray-300 mb-6">{idea.description}</p>
 
-      <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-        <p className="text-gray-300">
-          <span className="text-yellow-400 font-bold">Idea ID:</span> {id}
-        </p>
-
-        <p className="mt-3 text-gray-400">
-          This page will eventually show full information about the idea,
-          including description, files, timestamps, collaborators, and NDA
-          protections.
-        </p>
+      <div className="p-4 bg-neutral-800 rounded-lg">
+        <p className="text-sm text-gray-400">Posted by: {idea.ownerEmail}</p>
       </div>
     </div>
   );
