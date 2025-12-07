@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db, auth } from "@/firebase/config";
+import { db, auth } from "../../firebase/config";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
 export default function WalletPage() {
@@ -40,3 +40,4 @@ export default function WalletPage() {
     </div>
   );
 }
+
